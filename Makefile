@@ -1,7 +1,7 @@
 .PHONY: clean
 
-CFLAGS = -g -std=c99
-CPPFLAGS = -g
+CFLAGS = -g -std=c99 -Wall -Werror -Wextra
+CPPFLAGS = -g -Wall -Werror -Wextra
 
 PROGRESSIVE_CACTUS_DIR=/cluster/home/jcarmstr/progressiveCactus-fresh-fresh
 

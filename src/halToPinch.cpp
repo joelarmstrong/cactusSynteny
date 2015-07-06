@@ -70,7 +70,7 @@ stPinchThreadSet *pairwiseHalToPinch(char *halPath, char *srcGenomeName, char *d
         numSegments = srcGenome->getNumBottomSegments();
     }
 
-    while (segIt->getArrayIndex() != numSegments) {
+    while ((size_t) segIt->getArrayIndex() < numSegments) {
         // For each source segment, map the segment to the dest
         // genome, then add the pinch to the graph.
         set<MappedSegmentConstPtr> segSet;
