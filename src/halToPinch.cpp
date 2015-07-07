@@ -1,7 +1,7 @@
 // Simple wrapper script to convert a hal alignment into a pinch graph.
 #include "hal.h"
 #include "sonLib.h"
-
+#include "halToPinch.h"
 extern "C" {
 #include "stPinchGraphs.h"
 }
@@ -9,9 +9,32 @@ extern "C" {
 using namespace std;
 using namespace hal;
 
+sequenceLabel *sequenceLabel_construct(const char *genomeName,
+                                       const char *sequenceName) {
+    sequenceLabel *ret = (sequenceLabel *) malloc(sizeof(sequenceLabel));
+    ret->genomeName = stString_copy(genomeName);
+    ret->sequenceName = stString_copy(sequenceName);
+    return ret;
+}
+
+uint64_t sequenceLabel_hashKey(const sequenceLabel *label) {
+    return stHash_stringKey(label->genomeName) ^ stHash_stringKey(label->sequenceName);
+}
+
+int sequenceLabel_equals(const sequenceLabel *label1, const sequenceLabel *label2) {
+    return !(strcmp(label1->genomeName, label2->genomeName)
+             || strcmp(label1->sequenceName, label2->sequenceName));
+}
+
+void sequenceLabel_destruct(sequenceLabel *label) {
+    free(label->genomeName);
+    free(label->sequenceName);
+    free(label);
+}
+
 static stPinchThread *getThreadForSequence(stPinchThreadSet *threadSet,
                                            const Sequence *sequence,
-                                           stHash *threadIdToName) {
+                                           stHash *sequenceLabelToThread) {
     int64_t threadId = (int64_t) sequence;
     if (stPinchThreadSet_getThread(threadSet, threadId) == NULL) {
         stPinchThread *thread = stPinchThreadSet_addThread(threadSet, threadId, 1,
@@ -28,33 +51,39 @@ static stPinchThread *getThreadForSequence(stPinchThreadSet *threadSet,
         stPinchBlock_construct3(_5PrimeSegment, 1);
         stPinchBlock_construct3(_3PrimeSegment, 0);
 
-        char *threadName = stString_copy(sequence->getName().c_str());
-        stHash_insert(threadIdToName, stIntTuple_construct1(threadId), threadName);
+        const char *genomeName = sequence->getGenome()->getName().c_str();
+        const char *sequenceName = sequence->getName().c_str();
+        sequenceLabel *threadLabel = sequenceLabel_construct(genomeName,
+                                                             sequenceName);
+        stHash_insert(sequenceLabelToThread, threadLabel, thread);
     }
     return stPinchThreadSet_getThread(threadSet, threadId);
 }
 
-static void addPinch(stPinchThreadSet *threadSet, stHash *threadIdToName,
+static void addPinch(stPinchThreadSet *threadSet, stHash *sequenceLabelToThread,
                      const Sequence *srcSequence, hal_index_t srcStart, hal_index_t srcStop,
                      const Sequence *destSequence, hal_index_t destStart, hal_index_t destStop,
                      bool destReversed) {
-    stPinchThread *srcThread = getThreadForSequence(threadSet, srcSequence, threadIdToName);
-    stPinchThread *destThread = getThreadForSequence(threadSet, destSequence, threadIdToName);
+    stPinchThread *srcThread = getThreadForSequence(threadSet, srcSequence,
+                                                    sequenceLabelToThread);
+    stPinchThread *destThread = getThreadForSequence(threadSet, destSequence,
+                                                     sequenceLabelToThread);
     hal_index_t length = srcStop - srcStart;
+    (void) destStop; // to stop gcc whining about unused parameter if NDEBUG is defined
     assert(length == destStop - destStart);
     // Coordinates are shifted by 2 to follow the Cactus convention.
     stPinchThread_pinch(srcThread, destThread, srcStart + 2, destStart + 2, length, destReversed);
 }
 
-extern "C" {
-
-stPinchThreadSet *pairwiseHalToPinch(char *halPath, char *srcGenomeName, char *destGenomeName,
-                                     stHash **threadIdToName) {
+stPinchThreadSet *pairwiseHalToPinch(char *halPath, char *srcGenomeName,
+                                     char *destGenomeName,
+                                     stHash **sequenceLabelToThread) {
     stPinchThreadSet *threadSet = stPinchThreadSet_construct();
 
-    *threadIdToName = stHash_construct3((uint64_t (*)(const void *)) stIntTuple_hashKey,
-                                        (int (*)(const void *, const void *)) stIntTuple_equalsFn,
-                                        (void (*)(void *)) stIntTuple_destruct, free);
+    *sequenceLabelToThread = stHash_construct3((uint64_t (*)(const void *)) sequenceLabel_hashKey,
+                                               (int (*)(const void *, const void *)) sequenceLabel_equals,
+                                               (void (*)(void *)) sequenceLabel_destruct,
+                                                NULL);
 
     AlignmentConstPtr alignment = hdf5AlignmentInstanceReadOnly();
     alignment->open(halPath);
@@ -96,11 +125,9 @@ stPinchThreadSet *pairwiseHalToPinch(char *halPath, char *srcGenomeName, char *d
                 // pinch region stop is exclusive so we need to add 1 to the end pos.
                 destSeqRelativeStop = (*destSegIt)->getEndPosition() - destSequence->getStartPosition() + 1;
             }
-            addPinch(threadSet, *threadIdToName, srcSequence, srcSeqRelativeStart, srcSeqRelativeStop, destSequence, destSeqRelativeStart, destSeqRelativeStop, (*destSegIt)->getReversed());
+            addPinch(threadSet, *sequenceLabelToThread, srcSequence, srcSeqRelativeStart, srcSeqRelativeStop, destSequence, destSeqRelativeStart, destSeqRelativeStop, (*destSegIt)->getReversed());
         }
         segIt->toRight();
     }
     return threadSet;
-}
-
 }

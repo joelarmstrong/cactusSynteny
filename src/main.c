@@ -58,10 +58,10 @@ int main(int argc, char *argv[]) {
     char *srcGenomeName = argv[optind + 1];
     char *destGenomeName = argv[optind + 2];
 
-    stHash *threadIdToName = NULL;
+    stHash *sequenceLabelToThread = NULL;
     stPinchThreadSet *threadSet = pairwiseHalToPinch(halPath, srcGenomeName,
                                                      destGenomeName,
-                                                     &threadIdToName);
+                                                     &sequenceLabelToThread);
 
     stCactusNode *startCactusNode;
     stList *deadEndComponent;
@@ -71,9 +71,14 @@ int main(int argc, char *argv[]) {
 
     for (size_t i = 0; i < chainLengthsLen; i++) {
         printf("removing chains of size %" PRIi64 "\n", chainLengths[i]);
-        /* printChains(cactusGraph, threadIdToName); */
+        /* printChains(cactusGraph, threadToName); */
         /* removeSmallChains(cactusGraph, chainLengths[i]); */
     }
     stCactusGraph_destruct(cactusGraph);
+    stPinchThreadSet_destruct(threadSet);
+    if (chainLengths != defaultChainLengths) {
+        free(chainLengths);
+    }
+    stHash_destruct(sequenceLabelToThread);
     return 0;
 }
