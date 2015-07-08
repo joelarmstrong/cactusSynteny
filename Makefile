@@ -1,4 +1,4 @@
-.PHONY: clean
+.PHONY: clean test
 
 CFLAGS = -g -std=c99 -Wall -Werror -Wextra
 CPPFLAGS = -g -Wall -Werror -Wextra
@@ -19,18 +19,31 @@ HAL_LIBS = ${PROGRESSIVE_CACTUS_DIR}/submodules/hal/lib/halLib.a
 HDF5_LIBS = ${PROGRESSIVE_CACTUS_DIR}/submodules/hdf5/lib/libhdf5_cpp.a \
 	    ${PROGRESSIVE_CACTUS_DIR}/submodules/hdf5/lib/libhdf5.a -lz
 
-all: bin/synteny
+CUTEST_LIBS = ${PROGRESSIVE_CACTUS_DIR}/submodules/sonLib/lib/cuTest.a
+
+all: bin/synteny bin/syntenyTests
+
+test: bin/syntenyTests
+	./bin/syntenyTests
 
 src/halToPinch.o: src/halToPinch.cpp
-	h5c++ ${CPPFLAGS} -c -o src/halToPinch.o src/halToPinch.cpp ${HAL_INCS} ${PINCH_INCS} ${SONLIB_INCS}
+	h5c++ ${CPPFLAGS} -c -o src/halToPinch.o src/halToPinch.cpp \
+	       -Iinc ${HAL_INCS} ${PINCH_INCS} ${SONLIB_INCS}
 
 src/pinchToCactus.o: src/pinchToCactus.c
-	gcc ${CFLAGS} -o src/pinchToCactus.o -c src/pinchToCactus.c ${PINCH_INCS} ${SONLIB_INCS}
+	${CC} ${CFLAGS} -o src/pinchToCactus.o -c src/pinchToCactus.c \
+	       ${PINCH_INCS} ${SONLIB_INCS}
 
 bin/synteny: src/main.c src/halToPinch.o src/pinchToCactus.o
-	gcc ${CFLAGS} -o $@ $^ -Iinc ${HAL_INCS} ${HAL_LIBS} \
+	${CC} ${CFLAGS} -o $@ $^ -Iinc ${HAL_INCS} ${HAL_LIBS} \
 	       ${PINCH_INCS} ${PINCH_LIBS} ${SONLIB_INCS} \
 	       ${SONLIB_LIBS} ${HDF5_LIBS} ${MATCHINGANDORDERING_LIBS} -lstdc++
+
+bin/syntenyTests: tests/*.c src/halToPinch.o
+	${CC} ${CFLAGS} -o $@ $^ -Iinc ${HAL_INCS} ${HAL_LIBS} \
+	       ${PINCH_INCS} ${PINCH_LIBS} ${SONLIB_INCS} \
+	       ${SONLIB_LIBS} ${HDF5_LIBS} ${MATCHINGANDORDERING_LIBS} \
+	       ${CUTEST_LIBS} -lstdc++
 
 clean:
 	rm bin/synteny src/*.o

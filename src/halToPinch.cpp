@@ -72,7 +72,7 @@ static void addPinch(stPinchThreadSet *threadSet, stHash *sequenceLabelToThread,
     (void) destStop; // to stop gcc whining about unused parameter if NDEBUG is defined
     assert(length == destStop - destStart);
     // Coordinates are shifted by 2 to follow the Cactus convention.
-    stPinchThread_pinch(srcThread, destThread, srcStart + 2, destStart + 2, length, destReversed);
+    stPinchThread_pinch(srcThread, destThread, srcStart + 2, destStart + 2, length, !destReversed);
 }
 
 stPinchThreadSet *pairwiseHalToPinch(char *halPath, char *srcGenomeName,
@@ -129,5 +129,6 @@ stPinchThreadSet *pairwiseHalToPinch(char *halPath, char *srcGenomeName,
         }
         segIt->toRight();
     }
+    stPinchThreadSet_joinTrivialBoundaries(threadSet);
     return threadSet;
 }
