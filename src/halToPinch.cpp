@@ -51,10 +51,9 @@ static stPinchThread *getThreadForSequence(stPinchThreadSet *threadSet,
         stPinchBlock_construct3(_5PrimeSegment, 1);
         stPinchBlock_construct3(_3PrimeSegment, 0);
 
-        const char *genomeName = sequence->getGenome()->getName().c_str();
-        const char *sequenceName = sequence->getName().c_str();
-        sequenceLabel *threadLabel = sequenceLabel_construct(genomeName,
-                                                             sequenceName);
+        sequenceLabel *threadLabel =
+            sequenceLabel_construct(sequence->getGenome()->getName().c_str(),
+                                    sequence->getName().c_str());
         stHash_insert(sequenceLabelToThread, threadLabel, thread);
     }
     return stPinchThreadSet_getThread(threadSet, threadId);
