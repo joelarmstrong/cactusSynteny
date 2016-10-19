@@ -1,0 +1,38 @@
+sudo: required
+dist: trusty
+language: c++
+before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq update; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -y libtokyocabinet-dev libkyototycoon-dev kyototycoon libkyotocabinet-dev; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install tokyo-cabinet kyoto-cabinet kyoto-tycoon; fi
+  - git clone https://github.com/UCSCComparativeGenomics/sonLib.git
+  - git clone https://github.com/UCSCComparativeGenomics/pinchesAndCacti.git
+  - git clone https://github.com/UCSantaCruzComputationalGenomicsLab/hdf5.git
+  - git clone https://github.com/glennhickey/hal.git
+install:
+  - export sonLibRootPath=`pwd`/sonLib
+  - sh -c 'cd sonLib && make'
+  - sh -c 'cd pinchesAndCacti && make'
+  - sh -c 'cd hdf5 && CFLAGS=-std=c99 ./configure --prefix=`pwd` --enable-cxx >/dev/null && make >/dev/null 2>&1 && make install'
+  - export PATH=`pwd`/hdf5/bin:$PATH
+  - sh -c 'cd hal && make'
+script:
+  - export sonLibRootPath=`pwd`/sonLib
+  - export PATH=`pwd`/hdf5/bin:$PATH
+  - export hdf5Dir=`pwd`/hdf5
+  - export halDir=`pwd`/hal
+  - export pinchesAndCactiDir=`pwd`/pinchesAndCacti
+  - make
+  - make test
+os:
+  - linux
+  - osx
+env:
+  - CGL_DEBUG=1
+  - CGL_DEBUG=ultra ASAN_OPTIONS=detect_leaks=0
+matrix:
+  exclude:
+    # The default OSX env doesn't have a version that supports
+    # -fsanitize=address.
+    - env: CGL_DEBUG=ultra ASAN_OPTIONS=detect_leaks=0
+      os: osx

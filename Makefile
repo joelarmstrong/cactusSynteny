@@ -1,25 +1,22 @@
 .PHONY: clean test
 
-CFLAGS = -g -std=c99 -Wall -Werror -Wextra
-CPPFLAGS = -g -Wall -Werror -Wextra
+include ${sonLibRootPath}/include.mk
+CFLAGS?=${cflags} -std=c99
+CPPFLAGS?=${cppflags}
 
-PROGRESSIVE_CACTUS_DIR=/cluster/home/jcarmstr/progressiveCactus-fresh-fresh
+SONLIB_INCS = -I${sonLibRootPath}/lib
+SONLIB_LIBS = ${sonLibRootPath}/lib/sonLib.a
 
-SONLIB_INCS = -I${PROGRESSIVE_CACTUS_DIR}/submodules/sonLib/lib
-SONLIB_LIBS = ${PROGRESSIVE_CACTUS_DIR}/submodules/sonLib/lib/sonLib.a
+PINCH_INCS = -I${pinchesAndCactiDir}/inc
+PINCH_LIBS = ${sonLibRootPath}/lib/stPinchesAndCacti.a ${sonLibRootPath}/lib/3EdgeConnected.a
 
-PINCH_INCS = -I${PROGRESSIVE_CACTUS_DIR}/submodules/pinchesAndCacti/inc
-PINCH_LIBS = ${PROGRESSIVE_CACTUS_DIR}/submodules/sonLib/lib/stPinchesAndCacti.a
+HAL_INCS = -I${halDir}/lib
+HAL_LIBS = ${halDir}/lib/halLib.a
 
-MATCHINGANDORDERING_LIBS = ${PROGRESSIVE_CACTUS_DIR}/submodules/sonLib/lib/matchingAndOrdering.a ${PROGRESSIVE_CACTUS_DIR}/submodules/sonLib/lib/3EdgeConnected.a
+HDF5_LIBS = ${hdf5Dir}/lib/libhdf5_cpp.a \
+	    ${hdf5Dir}/lib/libhdf5.a -lz
 
-HAL_INCS = -I${PROGRESSIVE_CACTUS_DIR}/submodules/hal/lib
-HAL_LIBS = ${PROGRESSIVE_CACTUS_DIR}/submodules/hal/lib/halLib.a
-
-HDF5_LIBS = ${PROGRESSIVE_CACTUS_DIR}/submodules/hdf5/lib/libhdf5_cpp.a \
-	    ${PROGRESSIVE_CACTUS_DIR}/submodules/hdf5/lib/libhdf5.a -lz
-
-CUTEST_LIBS = ${PROGRESSIVE_CACTUS_DIR}/submodules/sonLib/lib/cuTest.a
+CUTEST_LIBS = ${sonLibRootPath}/lib/cuTest.a
 
 all: bin/synteny bin/syntenyTests
 
@@ -37,13 +34,13 @@ src/pinchToCactus.o: src/pinchToCactus.c
 bin/synteny: src/main.c src/halToPinch.o src/pinchToCactus.o
 	${CC} ${CFLAGS} -o $@ $^ -Iinc ${HAL_INCS} ${HAL_LIBS} \
 	       ${PINCH_INCS} ${PINCH_LIBS} ${SONLIB_INCS} \
-	       ${SONLIB_LIBS} ${HDF5_LIBS} ${MATCHINGANDORDERING_LIBS} -lstdc++
+	       ${SONLIB_LIBS} ${HDF5_LIBS} -lstdc++ -lm
 
 bin/syntenyTests: tests/*.c src/halToPinch.o
 	${CC} ${CFLAGS} -o $@ $^ -Iinc ${HAL_INCS} ${HAL_LIBS} \
 	       ${PINCH_INCS} ${PINCH_LIBS} ${SONLIB_INCS} \
-	       ${SONLIB_LIBS} ${HDF5_LIBS} ${MATCHINGANDORDERING_LIBS} \
-	       ${CUTEST_LIBS} -lstdc++
+	       ${SONLIB_LIBS} ${HDF5_LIBS} \
+	       ${CUTEST_LIBS} -lstdc++ -lm
 
 clean:
-	rm bin/synteny src/*.o
+	rm bin/* src/*.o
